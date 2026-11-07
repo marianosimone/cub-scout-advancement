@@ -1,5 +1,6 @@
-import data from './assets/requirements.json';
-type AppData = typeof data;
-export const loadRequirements = (): AppData => {
-  return data;
+import requirementsData from './assets/requirements.json';
+type Requirements = typeof requirementsData;
+
+export const loadRequirements = (): Requirements => {
+  return requirementsData;
 }
