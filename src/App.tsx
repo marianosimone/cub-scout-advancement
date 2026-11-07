@@ -1,10 +1,9 @@
-import heroImg from './assets/hero.png'
-import './App.css'
+import heroImg from "./assets/hero.png";
+import "./App.css";
 
-import {loadRequirements} from './parser'
+import { loadRequirements } from "./parser";
 
 function App() {
-
   return (
     <>
       <section id="center">
@@ -14,14 +13,14 @@ function App() {
 
         <section id="notes">
           {Object.keys(loadRequirements()).map((den) => {
-            return <span>{den}</span>
+            return <span>{den}</span>;
           })}
         </section>
       </section>
 
       <section id="spacer"></section>
     </>
-  )
+  );
 }
 
-export default App
+export default App;
