@@ -3,5 +3,5 @@ import {  loadRequirements } from '../parser'
 
 test('loads the requirements', () => {
   const requirements = loadRequirements();
-  expect(requirements.keys()).toContain("hello");
+  expect(Object.keys(requirements)).toContain("Lion");
 });
