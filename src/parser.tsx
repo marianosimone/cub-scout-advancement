@@ -29,13 +29,9 @@ export type DenName = (typeof denNames)[number];
 export interface Scout {
   name: string;
   nextRank: DenName;
-  finishedAdventures: Array<AdventureRequirements>;
-  pendingAdventures: Array<AdventureRequirements>;
-  // For each pending adventure name, the list of Requirement objects not yet completed
-  pendingIncompleteRequirements: Map<
-    string,
-    Array<{ id: string; text: string }>
-  >;
+  inProgressAdventures: Array<AdventureRequirements>;
+  completedAdventures: Array<AdventureRequirements>;
+  availableAdventures: Array<AdventureRequirements>;
 }
 
 export interface Den {
@@ -220,9 +216,9 @@ export const parseAdvancement = async (
     return {
       name,
       nextRank: normalizedRank,
-      finishedAdventures: [],
-      pendingAdventures: [],
-      pendingIncompleteRequirements: new Map(),
+      inProgressAdventures: [],
+      availableAdventures: [],
+      completedAdventures: [],
     };
   });
 
@@ -363,18 +359,28 @@ export const parseAdvancement = async (
         (k) => reqStatus[k] === "completed",
       ).length;
       const isApproved = adventureApproved[scout.name]?.[adv.name] || false;
-
       const allDone =
         isApproved || (reqKeys.length > 0 && completedCount === reqKeys.length);
 
+      const inProgress =
+        !allDone && (adv.type === "required" || completedCount > 0);
+
       if (allDone) {
-        scout.finishedAdventures.push(adv);
+        scout.completedAdventures.push(adv);
+      } else if (inProgress) {
+        const inProgressAdventure = {
+          name: adv.name,
+          url: adv.url,
+          type: adv.type,
+          requirements: Object.fromEntries(
+            Object.entries(adv.requirements).filter(
+              ([key]) => reqStatus[key] !== "completed",
+            ),
+          ),
+        };
+        scout.inProgressAdventures.push(inProgressAdventure);
       } else {
-        scout.pendingAdventures.push(adv);
-        const incompleteReqs = reqKeys
-          .filter((k) => reqStatus[k] !== "completed")
-          .map((k) => ({ id: k, text: adv.requirements[k] }));
-        scout.pendingIncompleteRequirements.set(adv.name, incompleteReqs);
+        scout.availableAdventures.push(adv);
       }
     });
   });

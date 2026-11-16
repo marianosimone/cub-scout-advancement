@@ -153,12 +153,6 @@ export default function App() {
       )
     : {};
 
-  const requirements = loadRequirements();
-
-  // Clean base URL handling for Vite sub-paths
-  const rawBase = import.meta.env.BASE_URL || "/";
-  const baseUrl = rawBase.endsWith("/") ? rawBase : rawBase + "/";
-
   let qrCounter = 0;
 
   return (
@@ -214,8 +208,11 @@ export default function App() {
         Object.entries(scoutsByDen).map(([rank, denScouts]) => {
           const denLogoKey = getDenLogoName(rank);
           const denFolder = getDenPluralFolder(rank);
-          const denLogoPath = `${baseUrl}assets/img/logos/${denLogoKey}.png`;
-          const denAdventures = Object.values(requirements[rank] || {});
+
+          const denLogoPath = new URL(
+            `./assets/img/logos/${denLogoKey}.png`,
+            import.meta.url,
+          ).href;
 
           return (
             <section key={rank} style={{ marginBottom: "2.5rem" }}>
@@ -253,19 +250,6 @@ export default function App() {
                 }}
               >
                 {denScouts.map((scout, sIdx) => {
-                  const finishedNames = new Set(
-                    scout.finishedAdventures.map((a) => a.name),
-                  );
-                  const pendingNames = new Set(
-                    scout.pendingAdventures.map((a) => a.name),
-                  );
-                  const availableElectives = denAdventures.filter(
-                    (adv) =>
-                      adv.type === "elective" &&
-                      !finishedNames.has(adv.name) &&
-                      !pendingNames.has(adv.name),
-                  );
-
                   return (
                     <div
                       key={sIdx}
@@ -332,7 +316,7 @@ export default function App() {
                         >
                           ⏳ In Progress
                         </h4>
-                        {scout.pendingAdventures.length === 0 ? (
+                        {scout.inProgressAdventures.length === 0 ? (
                           <p
                             style={{
                               fontSize: "0.85rem",
@@ -352,15 +336,12 @@ export default function App() {
                               marginBottom: "1rem",
                             }}
                           >
-                            {scout.pendingAdventures.map((adv, aIdx) => {
+                            {scout.inProgressAdventures.map((adv, aIdx) => {
                               const advImgPath = getAdventureImageFilename(
                                 denFolder,
                                 adv.name,
                               );
-                              const incompleteReqs =
-                                scout.pendingIncompleteRequirements.get(
-                                  adv.name,
-                                ) || [];
+
                               const uniqueQrId = `qr-${sIdx}-${aIdx}-${++qrCounter}`;
 
                               return (
@@ -403,7 +384,7 @@ export default function App() {
                                       </span>
                                     </div>
 
-                                    {incompleteReqs.length > 0 ? (
+                                    {
                                       <div
                                         style={{
                                           margin: "0 0 6px 0",
@@ -411,31 +392,22 @@ export default function App() {
                                           color: "#4a5568",
                                         }}
                                       >
-                                        {incompleteReqs.map((req) => (
-                                          <div
-                                            key={req.id}
-                                            style={{
-                                              color: "#2d3748",
-                                              marginBottom: "3px",
-                                            }}
-                                          >
-                                            <strong>{req.id}.</strong>{" "}
-                                            {req.text}
-                                          </div>
-                                        ))}
+                                        {Object.entries(adv.requirements).map(
+                                          (req) => (
+                                            <div
+                                              key={req[0]}
+                                              style={{
+                                                color: "#2d3748",
+                                                marginBottom: "3px",
+                                              }}
+                                            >
+                                              <strong>{req[0]}.</strong>{" "}
+                                              {req[1]}
+                                            </div>
+                                          ),
+                                        )}
                                       </div>
-                                    ) : (
-                                      <p
-                                        style={{
-                                          fontSize: "0.85rem",
-                                          color: "#666",
-                                          fontStyle: "italic",
-                                          margin: 0,
-                                        }}
-                                      >
-                                        All requirements completed.
-                                      </p>
-                                    )}
+                                    }
                                   </div>
 
                                   {adv.url && (
@@ -492,7 +464,7 @@ export default function App() {
                         >
                           📌 Available Electives
                         </h4>
-                        {availableElectives.length === 0 ? (
+                        {scout.availableAdventures.length === 0 ? (
                           <p
                             style={{
                               fontSize: "0.85rem",
@@ -513,7 +485,7 @@ export default function App() {
                               marginBottom: "1rem",
                             }}
                           >
-                            {availableElectives.map((adv, aIdx) => {
+                            {scout.availableAdventures.map((adv, aIdx) => {
                               const advImgPath = getAdventureImageFilename(
                                 denFolder,
                                 adv.name,
@@ -621,7 +593,7 @@ export default function App() {
                         >
                           🎉 Completed
                         </h4>
-                        {scout.finishedAdventures.length === 0 ? (
+                        {scout.completedAdventures.length === 0 ? (
                           <p
                             style={{
                               fontSize: "0.85rem",
@@ -641,7 +613,7 @@ export default function App() {
                               gap: "12px",
                             }}
                           >
-                            {scout.finishedAdventures.map((adv, aIdx) => {
+                            {scout.completedAdventures.map((adv, aIdx) => {
                               const advImgPath = getAdventureImageFilename(
                                 denFolder,
                                 adv.name,
