@@ -1,10 +1,9 @@
 import "./App.css";
 import { loadRequirements, loadAdvancement, parseAdvancement } from "./parser";
-import type { Scout } from "./parser";
-import { useRef, useState, useEffect } from "react";
-
-// Declare QRCode global from CDN script if loaded in index.html
-declare const QRCode: any;
+import type { AdventureRequirements, Scout } from "./parser";
+import { useRef, useState } from "react";
+import type { JSX } from "react";
+import QRCode from "react-qr-code";
 
 interface CsvLoaderButtonProps {
   onFileLoaded: (csvText: string) => void;
@@ -62,27 +61,19 @@ const getDenLogoName = (rankName: string) => {
     .replace(/^_+|_+$/g, "");
 };
 
-// Helper to derive den plural folder for adventure images
-const getDenPluralFolder = (rankName: string) => {
-  const lower = rankName.toLowerCase().trim();
-  if (lower.includes("lion")) return "lions";
-  if (lower.includes("tiger")) return "tigers";
-  if (lower.includes("wolf")) return "wolves";
-  if (lower.includes("bear")) return "bears";
-  if (lower.includes("webelos")) return "webelos";
-  if (lower.includes("arrow of light") || lower.includes("aol")) return "aols";
-  return lower.replace(/[^a-z0-9]+/g, "");
-};
-
 // Helper to derive adventure image filename
-const getAdventureImageFilename = (den: string, advName: string): string => {
+const getAdventureImageFilename = (rank: string, advName: string): string => {
+  const cleanRankName = rank.toLowerCase().trim().replaceAll(" ", "-");
   const cleanName = advName
     .replace(/\s*\([^)]+\)\s*$/, "")
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
-  return new URL(`./assets/img/${den}/${cleanName}.png`, import.meta.url).href;
+  return new URL(
+    `./assets/img/${cleanRankName}/${cleanName}.png`,
+    import.meta.url,
+  ).href;
 };
 
 export default function App() {
@@ -110,36 +101,6 @@ export default function App() {
     setError(null);
   };
 
-  // Automatically generate QR codes whenever scouts state updates and DOM is rendered
-  useEffect(() => {
-    if (!scouts) return;
-    const timer = setTimeout(() => {
-      const qrContainers = document.querySelectorAll('[id^="qr-"]');
-      qrContainers.forEach((container) => {
-        const url = container.getAttribute("data-url");
-        if (
-          url &&
-          typeof QRCode !== "undefined" &&
-          container.childElementCount === 0
-        ) {
-          try {
-            new QRCode(container, {
-              text: url,
-              width: 60,
-              height: 60,
-              colorDark: "#000000",
-              colorLight: "#ffffff",
-              correctLevel: QRCode.CorrectLevel?.L || 1,
-            });
-          } catch (e) {
-            console.error("QR Code generation error:", e);
-          }
-        }
-      });
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [scouts]);
-
   // Group scouts by nextRank (Den)
   const scoutsByDen = scouts
     ? scouts.reduce(
@@ -153,7 +114,88 @@ export default function App() {
       )
     : {};
 
-  let qrCounter = 0;
+  const AdventureTitle = ({
+    rank,
+    adventure,
+  }: {
+    rank: string;
+    adventure: AdventureRequirements;
+  }): JSX.Element => {
+    const advImgPath = getAdventureImageFilename(rank, adventure.name);
+    return (
+      <div
+        style={{
+          fontWeight: "bold",
+          marginBottom: "0.4em",
+          display: "flex",
+          alignItems: "center", // Vertically centers the image and text
+          justifyContent: "flex-start", // Aligns all content to the left
+          gap: "0.5em",
+        }}
+      >
+        <img
+          src={advImgPath}
+          alt=""
+          style={{
+            width: "36px",
+            height: "36px",
+            objectFit: "contain",
+            flexShrink: 0, // Prevents the image from squishing if text wraps
+          }}
+        />
+        <span style={{ fontSize: "1.05rem", textAlign: "left" }}>
+          {adventure.name}
+        </span>
+      </div>
+    );
+  };
+
+  const AdventureQRCode = ({
+    adventure,
+  }: {
+    adventure: AdventureRequirements;
+  }): JSX.Element => {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minWidth: "60px",
+        }}
+      >
+        <div
+          data-url={adventure.url}
+          style={{
+            width: "60px",
+            height: "60px",
+          }}
+        >
+          <QRCode
+            value={adventure.url}
+            size={60}
+            fgColor="#000000"
+            bgColor="#ffffff"
+          />
+        </div>
+        <a
+          href={adventure.url}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            fontSize: "0.65rem",
+            color: "#3182ce",
+            textDecoration: "none",
+            marginTop: "3px",
+            textAlign: "center",
+          }}
+        >
+          See adventure
+        </a>
+      </div>
+    );
+  };
 
   return (
     <div
@@ -207,8 +249,6 @@ export default function App() {
       {scouts &&
         Object.entries(scoutsByDen).map(([rank, denScouts]) => {
           const denLogoKey = getDenLogoName(rank);
-          const denFolder = getDenPluralFolder(rank);
-
           const denLogoPath = new URL(
             `./assets/img/logos/${denLogoKey}.png`,
             import.meta.url,
@@ -337,13 +377,6 @@ export default function App() {
                             }}
                           >
                             {scout.inProgressAdventures.map((adv, aIdx) => {
-                              const advImgPath = getAdventureImageFilename(
-                                denFolder,
-                                adv.name,
-                              );
-
-                              const uniqueQrId = `qr-${sIdx}-${aIdx}-${++qrCounter}`;
-
                               return (
                                 <div
                                   key={aIdx}
@@ -361,28 +394,10 @@ export default function App() {
                                   <div
                                     style={{ flexGrow: 1, textAlign: "left" }}
                                   >
-                                    <div
-                                      style={{
-                                        fontWeight: "bold",
-                                        marginBottom: "0.4rem",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "10px",
-                                      }}
-                                    >
-                                      <img
-                                        src={advImgPath}
-                                        alt=""
-                                        style={{
-                                          width: "36px",
-                                          height: "36px",
-                                          objectFit: "contain",
-                                        }}
-                                      />
-                                      <span style={{ fontSize: "1.05rem" }}>
-                                        {adv.name}
-                                      </span>
-                                    </div>
+                                    <AdventureTitle
+                                      rank={rank}
+                                      adventure={adv}
+                                    />
 
                                     {
                                       <div
@@ -410,40 +425,7 @@ export default function App() {
                                     }
                                   </div>
 
-                                  {adv.url && (
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        minWidth: "60px",
-                                      }}
-                                    >
-                                      <div
-                                        id={uniqueQrId}
-                                        data-url={adv.url}
-                                        style={{
-                                          width: "60px",
-                                          height: "60px",
-                                        }}
-                                      ></div>
-                                      <a
-                                        href={adv.url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        style={{
-                                          fontSize: "0.65rem",
-                                          color: "#3182ce",
-                                          textDecoration: "none",
-                                          marginTop: "3px",
-                                          textAlign: "center",
-                                        }}
-                                      >
-                                        See adventure
-                                      </a>
-                                    </div>
-                                  )}
+                                  <AdventureQRCode adventure={adv} />
                                 </div>
                               );
                             })}
@@ -486,12 +468,6 @@ export default function App() {
                             }}
                           >
                             {scout.availableAdventures.map((adv, aIdx) => {
-                              const advImgPath = getAdventureImageFilename(
-                                denFolder,
-                                adv.name,
-                              );
-                              const uniqueQrId = `qr-avail-${sIdx}-${aIdx}-${++qrCounter}`;
-
                               return (
                                 <div
                                   key={aIdx}
@@ -502,77 +478,21 @@ export default function App() {
                                     padding: "12px",
                                     display: "flex",
                                     flexDirection: "column",
-                                    alignItems: "center",
-                                    textAlign: "center",
+                                    alignItems: "stretch", // Lets children span the full width of the card
                                     justifyContent: "space-between",
                                     gap: "10px",
                                   }}
                                 >
+                                  <AdventureTitle rank={rank} adventure={adv} />
+
                                   <div
                                     style={{
                                       display: "flex",
-                                      alignItems: "center",
-                                      gap: "10px",
-                                      width: "100%",
-                                      textAlign: "left",
+                                      justifyContent: "center",
                                     }}
                                   >
-                                    <img
-                                      src={advImgPath}
-                                      alt=""
-                                      style={{
-                                        width: "36px",
-                                        height: "36px",
-                                        objectFit: "contain",
-                                        flexShrink: 0,
-                                      }}
-                                    />
-                                    <span
-                                      style={{
-                                        fontWeight: "bold",
-                                        fontSize: "0.9rem",
-                                        color: "#2d3748",
-                                        lineHeight: "1.2",
-                                      }}
-                                    >
-                                      {adv.name}
-                                    </span>
+                                    <AdventureQRCode adventure={adv} />
                                   </div>
-
-                                  {adv.url && (
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        marginTop: "4px",
-                                      }}
-                                    >
-                                      <div
-                                        id={uniqueQrId}
-                                        data-url={adv.url}
-                                        style={{
-                                          width: "60px",
-                                          height: "60px",
-                                        }}
-                                      ></div>
-                                      <a
-                                        href={adv.url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        style={{
-                                          fontSize: "0.65rem",
-                                          color: "#3182ce",
-                                          textDecoration: "none",
-                                          marginTop: "4px",
-                                          textAlign: "center",
-                                        }}
-                                      >
-                                        See adventure
-                                      </a>
-                                    </div>
-                                  )}
                                 </div>
                               );
                             })}
@@ -614,11 +534,6 @@ export default function App() {
                             }}
                           >
                             {scout.completedAdventures.map((adv, aIdx) => {
-                              const advImgPath = getAdventureImageFilename(
-                                denFolder,
-                                adv.name,
-                              );
-
                               return (
                                 <div
                                   key={aIdx}
@@ -632,27 +547,7 @@ export default function App() {
                                     gap: "10px",
                                   }}
                                 >
-                                  <img
-                                    src={advImgPath}
-                                    alt=""
-                                    style={{
-                                      width: "36px",
-                                      height: "36px",
-                                      objectFit: "contain",
-                                      flexShrink: 0,
-                                    }}
-                                  />
-                                  <span
-                                    style={{
-                                      fontWeight: "bold",
-                                      fontSize: "0.9rem",
-                                      color: "#2d3748",
-                                      lineHeight: "1.2",
-                                      textAlign: "left",
-                                    }}
-                                  >
-                                    {adv.name}
-                                  </span>
+                                  <AdventureTitle rank={rank} adventure={adv} />
                                 </div>
                               );
                             })}
