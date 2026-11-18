@@ -8,7 +8,7 @@ describe("loadRequirements", () => {
   }
   test.for([
     { den: "Lion", numberOfAdventures: 20 },
-    { den: "Tiger", numberOfAdventures: 6 },
+    { den: "Tiger", numberOfAdventures: 23 },
     { den: "Wolf", numberOfAdventures: 6 },
     { den: "Bear", numberOfAdventures: 26 },
     { den: "Webelos", numberOfAdventures: 26 },
